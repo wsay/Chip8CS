@@ -171,6 +171,7 @@ namespace Chip8.Emulator {
 			// Emulation loop
 			while (ContinueEmulationLoop) {
 				//TODO: doesn't seem to work very well - need to improve this
+                // as it affects the keyboard input (i.e. it barely works)
 				Thread.Sleep(16); //Keep us running at roughly 60 hz
 				keyPressed = TryGetKeyPress();
 

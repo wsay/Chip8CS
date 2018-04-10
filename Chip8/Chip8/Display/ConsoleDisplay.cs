@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+using System.IO;
 
 namespace Chip8.Display
 {
@@ -10,24 +12,33 @@ namespace Chip8.Display
 		//TODO: Need a better display that's less slow. Maybe a WPF window with a bitmap, based on the examples I gave students?
 		bool beep = false;
 
+        StringBuilder stringBuilder = new StringBuilder();
+        string cachedScreen;
 		/// <summary>
 		/// Draws a square array of bytes to the screen, using spaces and hashes
 		/// </summary>
 		/// <param name="graphics">A square array where 1 = #, 0 = ' ' </param>
 		public void DrawDisplay(byte[] graphics, int height, int width) {
 			Console.CursorVisible = false;
-			//Console.Clear();
-			for(int y = 0; y < height; y++) {
+            stringBuilder.Clear();
+
+            for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
 					if (graphics[y * width + x] == 1) {
-						Console.SetCursorPosition(x, y);
-						Console.Write('#');
+                        stringBuilder.Append('#');
 					} else {
-						Console.SetCursorPosition(x, y);
-						Console.Write(' ');
+                        stringBuilder.Append(' ');
 					}
 				}
+                stringBuilder.Append('\n');
 			}
+
+            if (stringBuilder.ToString() != cachedScreen) //Only update if screen has changed
+            {
+                string localString = stringBuilder.ToString();
+                Console.Write(localString);
+                cachedScreen = localString;
+            }
 
 			if (beep) {
 				Console.Write("BEEP!!");
