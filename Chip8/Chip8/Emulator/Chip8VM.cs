@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.IO;
-using System.Linq;
+using System.Diagnostics;
 using System.Collections.Generic;
 
 using Chip8.Display;
@@ -85,10 +85,13 @@ namespace Chip8.Emulator {
 
 		//Stores whether a key is being pressed, without
 		//blocking
-		ConsoleKeyInfo? keyPressed;
+		ConsoleKey lastKeyPressed;
 
 		//Continue the emulation loop (halted when we return from the main program)
 		bool ContinueEmulationLoop = true;
+
+        //Used for timing the emulation cycle execution
+        Stopwatch timer = new Stopwatch();
 		#endregion
 
 		/// <summary>
@@ -168,27 +171,35 @@ namespace Chip8.Emulator {
 			// Initialize the Chip8 system and load the game into the memory  
 			Initialize(programName);
 
-			// Emulation loop
-			while (ContinueEmulationLoop) {
-				//TODO: doesn't seem to work very well - need to improve this
-                // as it affects the keyboard input (i.e. it barely works)
-				Thread.Sleep(16); //Keep us running at roughly 60 hz
-				keyPressed = TryGetKeyPress();
+            //Initialise ticks and delay
+            long ticks = 0;
+            long delay = (Stopwatch.Frequency / 1000) * 10;
 
-				//If user pressed escape, end loop
-				if (keyPressed?.Key == ConsoleKey.Escape) {
-					ContinueEmulationLoop = false;
-					continue;
-				}
+            // Emulation loop
+            while (ContinueEmulationLoop) {
+				ConsoleKeyInfo? keyPressed = TryGetKeyPress();
 
-				try {
-					// Emulate one cycle
-					EmulateCycle();
-				} catch (ProgramCounterOutOfBoundsException e) {
-					Console.Write($"Error: {e.Message}`n Restarting...");
-					Thread.Sleep(2000);
-					Initialize(programName); //re-initialise everything with the same program
-				}
+                if (keyPressed != null) {
+                    lastKeyPressed = ((ConsoleKeyInfo) keyPressed).Key;
+                    //If user pressed escape, end loop
+                    if (lastKeyPressed == ConsoleKey.Escape) {
+                        ContinueEmulationLoop = false;
+                        continue;
+                    }
+                }
+
+
+                if (Stopwatch.GetTimestamp() - ticks > delay) {
+                    ticks = Stopwatch.GetTimestamp();
+                    try {
+                        // Emulate one cycle
+                        EmulateCycle();
+                    } catch (ProgramCounterOutOfBoundsException e) {
+                        Console.Write($"Error: {e.Message}`n Restarting...");
+                        Thread.Sleep(2000);
+                        Initialize(programName); //re-initialise everything with the same program
+                    }
+                }
 
 				// If the draw flag is set, update the screen
 				if (drawFlag) {
@@ -839,19 +850,19 @@ namespace Chip8.Emulator {
 
 		/// <summary>
 		/// Opcode: 0xEXA1
-		/// IF the key stored in VX isn't pressed, skip next
+		/// If the key stored in VX isn't pressed, skip next
 		/// instruction
 		/// </summary>
 		/// <param name="opcode"></param>
 		private void Run0xEXA1(ushort opcode) {
 			int X = GetX(opcode);
 
-			if (keyPressed?.Key != hexToKeyMap[V[X]]) {
-				pc += 4;
+            if (lastKeyPressed != hexToKeyMap[V[X]]) {
+                pc += 4;
 				return;
 			}
 
-			pc += 2;
+            pc += 2;
 		}
 
 		/// <summary>
@@ -863,7 +874,7 @@ namespace Chip8.Emulator {
 		private void Run0xEX9E(ushort opcode) {
 			int X = GetX(opcode);
 
-			if (keyPressed?.Key == hexToKeyMap[V[X]]) {
+			if (lastKeyPressed == hexToKeyMap[V[X]]) {
 				pc += 4;
 				return;
 			}
